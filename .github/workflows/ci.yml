@@ -175,7 +175,7 @@ jobs:
             Copy-Item "$vision\*.exe" "$package\tools\vision\bin\"
           }
 
-          $searchDirs = @("$env:CUDA_PATH\bin") + ($env:PATH -split ';')
+          $searchDirs = @("$env:CUDA_PATH\bin\x64", "$env:CUDA_PATH\bin") + ($env:PATH -split ';')
           $pending = @(Get-ChildItem $package -Recurse -Filter *.exe)
           $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
 
