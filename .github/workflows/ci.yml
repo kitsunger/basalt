@@ -157,6 +157,81 @@ jobs:
           export TEMP="$PWD/build/tmp" TMP="$PWD/build/tmp" TMPDIR="$PWD/build/tmp"
           ctest --test-dir build -L cpu -LE avx512 -j 4 --output-on-failure --timeout 300
 
+      - name: Package Windows binaries
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = Join-Path $PWD 'Basalt-Windows'
+          $bin = Join-Path $PWD 'bin'
+          if (!(Test-Path "$bin\basalt.exe")) { throw "bin\basalt.exe not found" }
+
+          New-Item -ItemType Directory -Force "$package\bin" | Out-Null
+          Copy-Item "$bin\*.exe" "$package\bin\"
+
+          $vision = Join-Path $PWD 'tools\vision\bin'
+          if (Test-Path $vision) {
+            New-Item -ItemType Directory -Force "$package\tools\vision\bin" | Out-Null
+            Copy-Item "$vision\*.exe" "$package\tools\vision\bin\"
+          }
+
+          $searchDirs = @("$env:CUDA_PATH\bin") + ($env:PATH -split ';')
+          $pending = @(Get-ChildItem $package -Recurse -Filter *.exe)
+          $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+          while ($pending.Count -gt 0) {
+            $exe = $pending[0]
+            $pending = @($pending | Select-Object -Skip 1)
+            $output = & dumpbin /DEPENDENTS $exe.FullName 2>&1
+            if ($LASTEXITCODE -ne 0) { throw "dumpbin failed: $($exe.FullName)" }
+
+            foreach ($line in $output) {
+              if ($line -notmatch '^\s+([A-Za-z0-9_.+-]+\.dll)\s*$') { continue }
+              $name = $Matches[1]
+              if (!$seen.Add($name)) { continue }
+
+              $found = $null
+              foreach ($dir in $searchDirs) {
+                if (!$dir) { continue }
+                $candidate = Join-Path $dir $name
+                if (Test-Path $candidate -PathType Leaf) {
+                  $found = (Resolve-Path $candidate).Path
+                  break
+                }
+              }
+
+              if (!$found -and $env:VCToolsRedistDir -and (Test-Path $env:VCToolsRedistDir)) {
+                $match = Get-ChildItem $env:VCToolsRedistDir -Filter $name -File -Recurse |
+                  Select-Object -First 1
+                if ($match) { $found = $match.FullName }
+              }
+
+              if (!$found) {
+                if ($name -match '^(api-ms-win-|ext-ms-win-|nvcuda\.dll$|nvapi64\.dll$)') { continue }
+                throw "Dependency not found: $name (required by $($exe.Name))"
+              }
+
+              if ($found.StartsWith($env:windir, [System.StringComparison]::OrdinalIgnoreCase)) { continue }
+
+              $destination = Join-Path "$package\bin" $name
+              if (!(Test-Path $destination)) {
+                Copy-Item $found $destination
+                $pending += Get-Item $destination
+              }
+            }
+          }
+
+          Get-ChildItem $package -Recurse -File | Select-Object FullName, Length
+
+      - name: Upload Windows binaries
+        if: runner.os == 'Windows'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: basalt-windows-${{ github.sha }}
+          path: Basalt-Windows/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Upload test logs
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

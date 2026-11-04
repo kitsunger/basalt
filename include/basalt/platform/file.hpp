@@ -59,6 +59,9 @@ bool path_executable(const std::string& path);
 /// This executable's own path, as the OS knows it; empty when the OS does not say.
 std::string module_path();
 
+/// Project root, inferred from the executable at bin/<name>.
+std::string source_dir();
+
 /// The directory for scratch files, with no trailing separator: the system's temp directory on Windows, /tmp on
 /// Linux. Never empty; where the OS cannot name one it says ".".
 std::string temp_dir();

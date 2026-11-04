@@ -529,8 +529,7 @@ set_target_properties(basalt PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_
 target_include_directories(basalt PRIVATE ${_gpu_include_directories})
 target_link_libraries(basalt PRIVATE engine engine_session grammar tokenizer prefill spec ${_gpu_runtime_target})
 basalt_embed_manifest(basalt)
-# `basalt serve` runs the Python server from the source tree; the engine reads its expert profiles from data/profiles
-target_compile_definitions(basalt PRIVATE BASALT_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+# `basalt serve` and the engine locate the source tree relative to the executable.
 
 # The standard benchmark: a host-only program that drives the engine over its stdin/stdout protocol.
 # The commit stamp is refreshed on every build (not only at configure time), by a target that rewrites the header

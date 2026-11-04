@@ -385,6 +385,18 @@ bool make_dirs(const std::string& path) {
 
 #endif
 
+std::string source_dir() {
+    std::string path = module_path();
+    if (path.empty()) return {};
+    auto pos = path.find_last_of("/\\");
+    if (pos == std::string::npos) return {};
+    path.resize(pos);
+    pos = path.find_last_of("/\\");
+    if (pos == std::string::npos) return {};
+    path.resize(pos);
+    return path;
+}
+
 bool list_files(const std::string& dir, std::vector<DirFile>& out) {
     out.clear();
     std::error_code ec;

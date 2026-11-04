@@ -78,8 +78,10 @@ int64_t process_id() { return (int64_t) GetCurrentProcessId(); }
 std::string host_os_name() { return "Windows"; }
 
 std::string python_interpreter(const std::string& src_dir) {
-    const std::string venv = src_dir + "/.venv/Scripts/python.exe";
-    return path_executable(venv) ? venv : "python";
+    const std::string local_venv = src_dir + "/.venv/Scripts/python.exe";
+    if (path_executable(local_venv)) return local_venv;
+    const std::string sibling_venv = src_dir + "/../venv/Scripts/python.exe";
+    return path_executable(sibling_venv) ? sibling_venv : "python";
 }
 
 void prefer_oom_victim() {}
